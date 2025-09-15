@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.30)
+cmake_minimum_required(VERSION 3.28)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -14,7 +14,7 @@ CPMAddPackage(
 )
 add_library(perfetto SHARED ${perfetto_SOURCE_DIR}/sdk/perfetto.cc)
 target_include_directories(perfetto PUBLIC ${perfetto_SOURCE_DIR}/sdk)
-target_compile_options(perfetto PRIVATE -O3)
+target_compile_options(perfetto PRIVATE -O3 -Wno-error -w)
 
 add_library(${PROJECT_NAME} STATIC)
 

@@ -83,11 +83,13 @@ else ()
     message(FATAL_ERROR "Libelf not found")
 endif ()
 
-pkg_check_modules(LIBDWARF REQUIRED libdwarf)
-if (LIBDWARF_FOUND)
-    target_link_libraries(orbuculum PUBLIC ${LIBDWARF_LDFLAGS})
-    target_include_directories(orbuculum PUBLIC ${LIBDWARF_INCLUDE_DIRS})
-else ()
-    message(FATAL_ERROR "Libdwarf not found")
-endif ()
-
+CPMAddPackage(
+        NAME libdwarf
+        GIT_REPOSITORY https://github.com/davea42/libdwarf-code.git
+        GIT_TAG "a5a9232"
+        GIT_SHALLOW TRUE
+        OPTIONS
+        "BUILD_NON_SHARED OFF"
+        "BUILD_SHARED ON"
+)
+target_link_libraries(orbuculum PUBLIC libdwarf::dwarf-shared)

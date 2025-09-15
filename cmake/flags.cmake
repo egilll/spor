@@ -8,7 +8,7 @@ add_compile_options(
         -Wno-unused-variable
         -Wno-deprecated-declarations
         -Wno-missing-field-initializers
-        -Wno-unused-lambda-capture
+#        -Wno-unused-lambda-capture
 )
 
 

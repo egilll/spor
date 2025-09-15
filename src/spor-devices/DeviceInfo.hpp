@@ -1,6 +1,7 @@
 #pragma once
 #include <string_view>
 #include <unordered_map>
+#include <cstdint>
 
 struct DeviceInfo {
     using IrqNumber = int16_t;

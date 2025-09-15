@@ -4,6 +4,7 @@
 #include <functional>
 #include <span>
 #include <string>
+#include <memory>
 
 // Forward declarations for C structs from msgDecoder.h
 struct excMsg;

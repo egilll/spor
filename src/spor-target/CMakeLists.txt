@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.30)
+cmake_minimum_required(VERSION 3.28)
 
 project(spor-target)
 
@@ -28,7 +28,7 @@ set(SPOR_LIBRARY_NAME "spor-target" CACHE STRING "Name of generated library")
     END OF OPTIONS
 ]]
 
-set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_STANDARD 23)
 
 if (NOT SPOR_SYSTEM_HEADER OR SPOR_SYSTEM_HEADER STREQUAL "")
     message(FATAL_ERROR "SPOR_SYSTEM_HEADER must be set to a valid system header file (e.g. 'gd32f4xx.h')")

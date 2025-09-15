@@ -10,12 +10,18 @@ Currently only instrumented trace is supported; full Embedded Trace Macrocell (E
 
 ## Usage
 
-```cmake --preset release && \
+```
 cmake --preset release && \
 cmake --build --preset release --target spor-host \ 
 ./build/release/spor-host/spor-host \
     --elf-file file.elf \
     --input-file file.swo
+```
+
+## Setup
+
+```
+sudo apt-get install -y libdwarf-dev libdw-dev libelf-dev libcapstone-dev elfutils ninja-build cmake build-essential git pkg-config
 ```
 
 ## Acknowledgements
