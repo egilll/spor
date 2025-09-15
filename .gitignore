@@ -1,0 +1,8 @@
+.idea
+OLD
+build
+cmake-build**
+.env
+data
+deps
+*_OLD

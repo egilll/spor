@@ -1,0 +1,20 @@
+BasedOnStyle: LLVM
+IndentWidth: 4
+FixNamespaceComments: false
+NamespaceIndentation: Inner
+BinPackParameters: OnePerLine
+AlignAfterOpenBracket: BlockIndent
+ContinuationIndentWidth: 4
+AccessModifierOffset: -4
+SortIncludes: CaseInsensitive
+IncludeCategories:
+  - Regex: '<[[:alnum:]_.]+>'
+    Priority: 1
+  - Regex: '.*'
+    Priority: 2
+IncludeBlocks: Regroup
+AlwaysBreakTemplateDeclarations: Yes
+AllowShortBlocksOnASingleLine: Empty
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortLambdasOnASingleLine: Empty
+ColumnLimit: 120

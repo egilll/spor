@@ -1,0 +1,85 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 28,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "generator": "Ninja",
+      "warnings": {
+        "dev": true
+      },
+      "errors": {
+        "dev": true,
+        "deprecated": false
+      },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_CXX_COMPILER_LAUNCHER": "ccache"
+      }
+    },
+    {
+      "name": "debug",
+      "inherits": "base",
+      "displayName": "Debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "release",
+      "inherits": "base",
+      "displayName": "Release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "target",
+      "inherits": "base",
+      "displayName": "Target",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "IS_TARGET": true,
+        "CMAKE_C_COMPILER": "arm-none-eabi-gcc",
+        "CMAKE_CXX_COMPILER": "arm-none-eabi-g++",
+        "CMAKE_SYSTEM_NAME": "Generic",
+        "CMAKE_C_COMPILER_WORKS": true,
+        "CMAKE_CXX_COMPILER_WORKS": true
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "base",
+      "hidden": true
+    },
+    {
+      "name": "debug",
+      "inherits": "base",
+      "configurePreset": "debug",
+      "displayName": "Debug"
+    },
+    {
+      "name": "release",
+      "inherits": "base",
+      "configurePreset": "release",
+      "displayName": "Release"
+    },
+    {
+      "name": "target",
+      "inherits": "base",
+      "configurePreset": "target",
+      "displayName": "Target"
+    }
+  ],
+  "testPresets": [],
+  "packagePresets": [],
+  "workflowPresets": []
+}
