@@ -10,6 +10,8 @@
 struct Options {
     std::string outputFile;
     std::string elfFile;
+    std::string inputFile;
+
     uint32_t cpuFreq = 200'000'000;
     orbcat::Orbcat::Options orbcatOptions;
 
@@ -47,8 +49,8 @@ inline Options Options::parseCommandLine(int argc, char *argv[]) {
     if (cpufreq)
         options.cpuFreq = args::get(cpufreq);
     if (inputFile)
-        options.orbcatOptions.inputFile = args::get(inputFile);
-    options.orbcatOptions.itmSync = args::get(itmSync);
+        options.inputFile = args::get(inputFile);
+    // options.orbcatOptions.itmSync = args::get(itmSync);
     options.orbcatOptions.server = args::get(server);
     if (elfFile)
         options.elfFile = args::get(elfFile);

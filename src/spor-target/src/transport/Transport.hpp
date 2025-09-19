@@ -7,46 +7,52 @@
 
 #include SPOR_SYSTEM_HEADER
 #include "IrqLockGuard.hpp"
-#include "orbcode/trace/itm.h"
 #include "spor-common/Messages.hpp"
 #include "Utils.hpp"
-#include "zpp_bits.h"
+#include "transport/RTT.hpp"
 
 namespace spor {
 
-#ifndef spor_BUFFER_SIZE
-#define spor_BUFFER_SIZE 100
+// Use a dedicated RTT up-buffer for SPOR traffic.
+#ifndef SPOR_RTT_UP_BUFFER_INDEX
+#define SPOR_RTT_UP_BUFFER_INDEX 0
 #endif
 
-template <typename T, typename Variant>
-struct VariantIndex;
-
-template <typename T, typename... Types>
-struct VariantIndex<T, std::variant<Types...>> {
-    static constexpr std::size_t value = []() {
-        std::size_t index = 0;
-        ((std::is_same_v<T, Types> ? false : (++index, true)) && ...);
-        return index;
-    }();
+struct RttStreamWriter {
+    static inline void put_u8(uint8_t v) { SEGGER_RTT_PutChar(SPOR_RTT_UP_BUFFER_INDEX, static_cast<char>(v)); }
+    static inline void put_u16(uint16_t v) {
+        put_u8(static_cast<uint8_t>(v & 0xFF));
+        put_u8(static_cast<uint8_t>((v >> 8) & 0xFF));
+    }
+    static inline void put_u32(uint32_t v) {
+        put_u8(static_cast<uint8_t>(v & 0xFF));
+        put_u8(static_cast<uint8_t>((v >> 8) & 0xFF));
+        put_u8(static_cast<uint8_t>((v >> 16) & 0xFF));
+        put_u8(static_cast<uint8_t>((v >> 24) & 0xFF));
+    }
+    static inline void put_u64(uint64_t v) {
+        put_u32(static_cast<uint32_t>(v & 0xFFFFFFFFULL));
+        put_u32(static_cast<uint32_t>((v >> 32) & 0xFFFFFFFFULL));
+    }
+    static inline void put_s32(int32_t v) { put_u32(static_cast<uint32_t>(v)); }
+    static inline void put_s64(int64_t v) { put_u64(static_cast<uint64_t>(v)); }
+    static inline void put_stringz(const char *s) {
+        if (!s) {
+            put_u8(0);
+            return;
+        }
+        while (*s) {
+            SEGGER_RTT_PutChar(SPOR_RTT_UP_BUFFER_INDEX, *s++);
+        }
+        SEGGER_RTT_PutChar(SPOR_RTT_UP_BUFFER_INDEX, 0);
+    }
 };
 
-template <typename T>
-constexpr uint8_t GetMessageIndex() {
-    return static_cast<uint8_t>(VariantIndex<T, Message>::value);
-}
 
 class Transport {
 public:
     static bool NO_INSTRUMENT isReady();
 };
-
-void NO_INSTRUMENT SendChannel(Channel channel, std::span<const std::byte> data);
-
-/** Todo: Merge with below */
-inline NO_INSTRUMENT void SendCycleCount() {
-    // const IrqLockGuard lock{};
-    ITMWrite32(static_cast<uint8_t>(Channel::CYCLE_COUNT), DWT->CYCCNT);
-}
 
 template <typename T>
 void NO_INSTRUMENT Send(const T &message) {
@@ -54,20 +60,14 @@ void NO_INSTRUMENT Send(const T &message) {
         return;
 
     const IrqLockGuard lock{};
-
-    SendCycleCount();
-
-    constexpr uint8_t messageTypeIndex = GetMessageIndex<T>();
-    SendChannel(Channel::MESSAGE_TYPE, std::span{reinterpret_cast<const std::byte *>(&messageTypeIndex), 1});
-
-    static std::array<std::byte, spor_BUFFER_SIZE> buffer;
-    auto out = zpp::bits::out{buffer};
-    auto result = out(message);
-    if (zpp::bits::failure(result)) {
-        return;
-    }
-    auto data = std::span<const std::byte>{buffer.data(), out.position()};
-    SendChannel(Channel::MESSAGE_DATA, data);
+    constexpr uint8_t messageTypeIndex = static_cast<uint8_t>(MessageTag<T>::value);
+    RttStreamWriter w{};
+    // [type]
+    w.put_u8(messageTypeIndex);
+    // [cycles as u32, LE]
+    w.put_u32(DWT->CYCCNT);
+    // [payload fields]
+    spor::wire::write(w, message);
 }
 
 }

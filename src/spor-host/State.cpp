@@ -1,8 +1,9 @@
+#include "State.hpp"
+
 #include <iostream>
 #include <string>
 #include <unordered_map>
 
-#include "State.hpp"
 #include "symbol-resolver/ElfSymbolResolver.hpp"
 
 void State::SymbolsLoaded() {
@@ -22,7 +23,7 @@ void State::FunctionEnter(TargetPointer ptr) {
     auto irqIt = irqFunctions.find(ptr);
     if (irqIt != irqFunctions.end()) {
         // Use IRQ number for IRQ thread registration and tracking
-        profiler::PerfettoApi::EnterIrq(static_cast<uint32_t>(irqIt->second.irqNumber));
+        // profiler::PerfettoApi::EnterIrq(static_cast<uint32_t>(irqIt->second.irqNumber));
     } else {
         profiler::PerfettoApi::FunctionTraceEnter(ptr);
     }
@@ -31,7 +32,7 @@ void State::FunctionEnter(TargetPointer ptr) {
 void State::FunctionExit(TargetPointer ptr) {
     auto irqIt = irqFunctions.find(ptr);
     if (irqIt != irqFunctions.end()) {
-        profiler::PerfettoApi::ExitIrq(static_cast<uint32_t>(irqIt->second.irqNumber));
+        // profiler::PerfettoApi::ExitIrq(static_cast<uint32_t>(irqIt->second.irqNumber));
     } else {
         profiler::PerfettoApi::FunctionTraceExit(ptr);
     }

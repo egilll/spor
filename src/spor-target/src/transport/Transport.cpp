@@ -1,17 +1,14 @@
 #include "Transport.hpp"
 
 #include "spor-common/Messages.hpp"
+#include "transport/RTT.hpp"
 
 namespace spor {
 
 bool Transport::isReady() {
-    return ITMIsPortEnabled(0);
-}
-
-void NO_INSTRUMENT SendChannel(Channel channel, std::span<const std::byte> data) {
-    if (data.empty())
-        return;
-    ITMWriteBuffer(static_cast<uint8_t>(channel), data.data(), data.size());
+    // Consider RTT Up-Buffer 0 as always ready once initialized.
+    // If desired, check available space: SEGGER_RTT_GetAvailWriteSpace(0) > 0
+    return true;
 }
 
 }

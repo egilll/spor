@@ -134,13 +134,21 @@ struct Thread {
     std::unordered_map<uint32_t, Lockable> lockables; // Track locks per thread
 
     std::shared_ptr<TrackNode> rootTrack;
+    std::shared_ptr<TrackNode> callStackTrack; // Track for function call stack
     std::shared_ptr<TrackNode> lockTrack; // Single lock track for all locks
     std::shared_ptr<TrackNode> messageTrack;
     std::shared_ptr<TrackNode> extraInfoTrack;
 
+    struct CallStackEntry {
+        uint32_t address = 0;
+        std::shared_ptr<Slice> slice;
+    };
+    std::vector<CallStackEntry> callStack; // LIFO stack of active function calls
+
     Thread() = default;
     Thread(int32_t pid, std::string name) : pid(pid), name(name) {
         rootTrack = TrackManager::Instance().CreateTrack(TrackType::THREAD_STATUS, name, nullptr);
+        callStackTrack = TrackManager::Instance().CreateTrack(TrackType::CALL_STACK, "Call Stack", rootTrack);
         messageTrack = TrackManager::Instance().CreateTrack(TrackType::THREAD_STATUS, "Log", rootTrack);
         extraInfoTrack = TrackManager::Instance().CreateTrack(TrackType::THREAD_STATUS, "Debug events", rootTrack);
         statusWrapper = std::make_unique<ThreadStatusWrapper>(rootTrack);
@@ -152,6 +160,8 @@ struct PerfettoApi {
     static std::unordered_map<uint32_t, Lockable> lockables;
     static std::unordered_map<uint32_t, Thread> threads;
     static uint32_t currentThreadId;
+    // LIFO stack of execution contexts (FreeRTOS threads or IRQ thread IDs)
+    static std::vector<uint32_t> contextStack;
 
 public:
     static std::unique_ptr<perfetto::TracingSession> StartTracing();

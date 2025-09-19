@@ -8,7 +8,11 @@ add_compile_options(
         -Wno-unused-variable
         -Wno-deprecated-declarations
         -Wno-missing-field-initializers
-#        -Wno-unused-lambda-capture
+
+        $<$<CXX_COMPILER_ID:GNU>:-fmax-errors=1>
+        $<$<CXX_COMPILER_ID:Clang>:-ferror-limit=1>
+
+        #        -Wno-unused-lambda-capture
 )
 
 

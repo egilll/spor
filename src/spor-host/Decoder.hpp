@@ -6,11 +6,9 @@
 #include <string>
 #include <vector>
 
-#include "Dispatcher.hpp"
 #include "spor-common/Messages.hpp"
-#include "zpp_bits.h"
 
-enum class DecoderState { WAITING_FOR_TYPE, RECEIVING_DATA };
+enum class DecoderState { WAITING_FOR_HEADER, WAITING_FOR_PAYLOAD };
 
 class IMessageHandler {
 public:
@@ -98,22 +96,13 @@ public:
 
     static MessageDecoder *GetInstance();
 
-    void ProcessChannelData(uint8_t channel, uint64_t timestamp, std::span<std::byte> data);
+    void ProcessBytes(std::span<const std::byte> data);
 
 private:
-    void OnMessage(uint8_t messageTypeIndex, std::span<std::byte> data);
-
-    DecoderState state = DecoderState::WAITING_FOR_TYPE;
-    uint8_t currentMessageTypeIndex;
-    std::vector<uint8_t> messageBuffer;
-    std::vector<uint8_t> consoleBuffer;
-
+    // New framing: [u8 type][varuint cycles][varuint len][payload]
+    std::vector<uint8_t> streamBuffer;
     IMessageHandler &handler_;
-    MessageDispatcher<IMessageHandler> dispatcher_;
-
-    void HandleMessageType(uint8_t type);
-    void HandleMessageData(std::span<std::byte> data);
-    void HandleConsoleLog(std::span<std::byte> data);
-    void TryProcessMessage();
-    void Reset();
+    // RTT may start with a zero-terminated info string; discard until first '\0'
+    // bool skippedInitialInfo_{false};
+    void TryParse();
 };

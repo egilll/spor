@@ -76,7 +76,9 @@ CPMAddPackage(
 )
 
 add_executable(target_test)
-target_sources(target_test PRIVATE main.cpp
+target_sources(target_test PRIVATE
+        main.cpp
+        RTT_stubs.cpp
         gd32-libraries/CMSIS/GD/GD32F4xx/Source/ARM/startup_gd32f450_470.s
 )
 target_include_directories(target_test PUBLIC .)

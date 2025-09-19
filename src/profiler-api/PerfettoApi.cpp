@@ -31,6 +31,26 @@ std::unordered_map<uint32_t, Lockable> PerfettoApi::lockables;
 std::unordered_map<uint32_t, Thread> PerfettoApi::threads;
 std::unique_ptr<SymbolResolver> PerfettoApi::symbolResolver = nullptr;
 uint32_t PerfettoApi::currentThreadId = 0;
+std::vector<uint32_t> PerfettoApi::contextStack;
+
+namespace {
+// Helpers to work with IRQ/thread states
+inline bool IsIrqThreadId(uint32_t tid) {
+    return (tid & 0x80000000u) != 0u;
+}
+
+inline void MarkRunning(uint32_t tid) {
+    PerfettoApi::UpdateThreadStatus(tid, ThreadState{ThreadState::State::TASK_RUNNING});
+}
+
+inline void MarkStopped(uint32_t tid) {
+    PerfettoApi::UpdateThreadStatus(tid, ThreadState{ThreadState::State::TASK_STOPPED});
+}
+
+inline void MarkPreempted(uint32_t tid) {
+    PerfettoApi::UpdateThreadStatus(tid, ThreadState{ThreadState::State::TASK_WAITING, std::string("Preempted")});
+}
+} // namespace
 
 void InitializePerfetto() {
     perfetto::TracingInitArgs args;
@@ -340,25 +360,51 @@ void PerfettoApi::ThreadWakeup(uint32_t threadId) {
 void PerfettoApi::EnterIrq(uint32_t irq) {
     DEBUG_FUNCTION(irq);
 
+    // Ensure IRQ thread exists
     EnsureIrqThreadRegistered(irq);
-    auto tid = IrqThreadId(irq);
-    UpdateThreadStatus(tid, ThreadState{ThreadState::State::TASK_RUNNING});
-    currentThreadId = tid;
+    const auto irqTid = IrqThreadId(irq);
+
+    // If there is a currently running context (thread or IRQ), mark it preempted and push onto stack
+    if (currentThreadId != 0) {
+        MarkPreempted(currentThreadId);
+        contextStack.push_back(currentThreadId);
+    }
+
+    // Switch to IRQ context
+    MarkRunning(irqTid);
+    currentThreadId = irqTid;
 }
 
 void PerfettoApi::ExitIrq(uint32_t irq) {
     DEBUG_FUNCTION(irq);
 
-    auto tid = IrqThreadId(irq);
-    // Mark the IRQ thread as stopped and clear current context if it matches
-    UpdateThreadStatus(tid, ThreadState{ThreadState::State::TASK_STOPPED});
-    if (currentThreadId == tid) {
-        currentThreadId = 0;
+    const auto irqTid = IrqThreadId(irq);
+
+    // Stop the exiting IRQ context
+    MarkStopped(irqTid);
+
+    // Pop and resume the previous context if any (LIFO)
+    if (!contextStack.empty()) {
+        const auto resumeTid = contextStack.back();
+        contextStack.pop_back();
+        MarkRunning(resumeTid);
+        currentThreadId = resumeTid;
+    } else {
+        // No previous context to resume
+        if (currentThreadId == irqTid) {
+            currentThreadId = 0;
+        }
     }
 }
 
 void PerfettoApi::ExitAllIrqs() {
     DEBUG_FUNCTION();
+    // Unwind any active IRQ contexts, resuming the original preempted thread
+    while (currentThreadId != 0 && IsIrqThreadId(currentThreadId)) {
+        // Compute IRQ number from IRQ TID and reuse ExitIrq logic
+        const uint32_t irq = (currentThreadId & 0x7FFFFFFFu);
+        ExitIrq(irq);
+    }
 }
 
 uint32_t PerfettoApi::IrqThreadId(uint32_t irq) {
@@ -395,27 +441,52 @@ void PerfettoApi::EnsureThreadRegistered(uint32_t threadId, std::string_view thr
 void PerfettoApi::FunctionTraceEnter(uint32_t functionAddress, std::string_view functionName) {
     DEBUG_FUNCTION(functionAddress, functionName);
 
-    // SymbolInfo symbolInfo = GetResolvedSymbolInfo(functionAddress, functionName);
-    // Thread *thread = currentThreadId != 0 ? FindThread(currentThreadId) : nullptr;
-    //
-    // if (thread) {
-    //     auto callStackTrack = thread->rootTrack
-    //     if (callStackTrack) {
-    //         callStackTrack->StartSlice(symbolInfo.name, GetTime());
-    //     }
-    // }
+    // Ensure we have a current thread context
+    if (currentThreadId == 0) {
+        return;
+    }
+
+    // EnsureThreadRegistered(currentThreadId);
+    Thread *thread = FindThread(currentThreadId);
+    if (!thread) {
+        return;
+    }
+
+    // Resolve function name (fallback to provided name if available)
+    SymbolInfo symbolInfo = GetResolvedSymbolInfo(functionAddress, functionName);
+
+    // Create a slice on the per-thread call stack track and push it to the stack
+    if (thread->callStackTrack) {
+        auto slice = thread->callStackTrack->StartSlice(symbolInfo.name, GetTime());
+        thread->callStack.push_back(Thread::CallStackEntry{functionAddress, slice});
+    }
 }
 
 void PerfettoApi::FunctionTraceExit(uint32_t functionAddress) {
     DEBUG_FUNCTION(functionAddress);
 
-    // Thread *thread = currentThreadId != 0 ? FindThread(currentThreadId) : nullptr;
-    // if (thread) {
-    //     auto callStackTrack = thread->GetOrCreateTrack(TrackType::CALL_STACK, "Call Stack");
-    //     if (callStackTrack && callStackTrack->GetActiveSliceCount() > 0) {
-    //         callStackTrack->EndAllSlices();
-    //     }
-    // }
+    if (currentThreadId == 0) {
+        return;
+    }
+
+    Thread *thread = FindThread(currentThreadId);
+    if (!thread) {
+        return;
+    }
+
+    // Pop and end slices until we match the exiting function or stack is empty.
+    while (!thread->callStack.empty()) {
+        auto entry = thread->callStack.back();
+        thread->callStack.pop_back();
+        if (entry.slice) {
+            entry.slice->End();
+        }
+
+        if (entry.address == functionAddress) {
+            break;
+        }
+        // If not matched, continue unwinding to maintain stack consistency.
+    }
 }
 
 void PerfettoApi::FlowBegin(uint32_t flow_id, std::string_view name) {

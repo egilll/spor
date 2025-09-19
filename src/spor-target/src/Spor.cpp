@@ -35,13 +35,10 @@ void PlotConfig(const char *name, int type, bool step, bool fill, uint32_t color
     Send(PlotConfigMessage{{type, step ? uint8_t(1) : uint8_t(0), fill ? uint8_t(1) : uint8_t(0), color}, name});
 }
 
-void TraceMessage(const char *text, size_t length, uint32_t color) {
-    if (!text)
+void TraceMessage(const char *text, size_t length, uint32_t /*color*/) {
+    if (!text || length == 0)
         return;
-    if (length == 0) {
-        length = strlen(text);
-    }
-    Send(MessageTextMessage{{color, static_cast<uint32_t>(length)}, text});
+    Send(MessageTextMessage{text, static_cast<uint32_t>(length)});
 }
 
 void TraceAlloc(const void *ptr, size_t size, const char *name) {

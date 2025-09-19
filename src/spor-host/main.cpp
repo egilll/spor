@@ -1,12 +1,13 @@
 #include <algorithm>
 #include <chrono>
 #include <iostream>
+#include <fstream>
 #include <memory>
 #include <string>
 #include <thread>
 
 #include "Options.hpp"
-#include "orbcat/Orbcat.hpp"
+// #include "orbcat/Orbcat.hpp"
 #include "PerfettoApi.hpp"
 #include "SporHost.hpp"
 #include "symbol-resolver/ElfSymbolResolver.hpp"
@@ -28,25 +29,30 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        orbcat::MessageHandler handlers;
-        handlers.onChannelData = [](uint8_t channel, uint64_t timestamp, std::span<std::byte> data) {
-            // SporHost::GetInstance().HandleTimestamp(timestamp);
-            MessageDecoder::GetInstance()->ProcessChannelData(channel, timestamp, data);
-        };
-        handlers.onException = [](const orbcat::ExceptionMessage &exception, uint64_t timestamp) {
-            // SporHost::GetInstance().HandleTimestamp(timestamp);
-            SporHost::GetInstance().HandleException(exception, timestamp);
-        };
-        handlers.onTimestamp = [](uint64_t timestamp, orbcat::TimeStatus status) {
-            // profiler::PerfettoApi::SetTime(timestamp);
-            // profiler::PerfettoApi::SetTime(timestamp);
-            // SporHost::GetInstance().HandleTimestamp(timestamp);
-        };
-        orbcat::Orbcat orbcat(options.orbcatOptions, std::move(handlers));
-        std::thread orbThread([&orbcat]() {
-            orbcat.Start();
-        });
-        orbThread.join();
+        if (options.inputFile.empty()) {
+            std::cerr << "--input-file is required for offline decode" << std::endl;
+            return 1;
+        }
+
+        std::ifstream ifs(options.inputFile, std::ios::binary);
+        if (!ifs) {
+            std::cerr << "Failed to open input file: " << options.inputFile << std::endl;
+            return 1;
+        }
+        // Skip initial bytes (e.g., header) and start reading from offset 0x70
+        ifs.seekg(0x70, std::ios::beg);
+        if (!ifs) {
+            std::cerr << "Failed to seek to offset 0x70 in input file: " << options.inputFile << std::endl;
+            return 1;
+        }
+        std::vector<std::byte> buf(64 * 1024);
+        while (ifs) {
+            ifs.read(reinterpret_cast<char *>(buf.data()), static_cast<std::streamsize>(buf.size()));
+            std::streamsize got = ifs.gcount();
+            if (got <= 0) break;
+            std::span<const std::byte> data(buf.data(), static_cast<size_t>(got));
+            MessageDecoder::GetInstance()->ProcessBytes(data);
+        }
 
         profiler::PerfettoApi::StopTracing(std::move(tracing_session));
     } catch (const std::exception &e) {

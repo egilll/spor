@@ -100,18 +100,22 @@ void SporFreeRtosTaskReadied(void *tcb) {
 }
 
 void SporFreeRtosTaskDelayUntil(uint32_t timeToWake) {
-    Send(FreertosTaskDelayUntilMessage{
-        .handle = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(xTaskGetCurrentTaskHandle())),
-        .timeToWake = timeToWake
-    });
+    Send(
+        FreertosTaskDelayUntilMessage{
+            .handle = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(xTaskGetCurrentTaskHandle())),
+            .timeToWake = timeToWake
+        }
+    );
     SporFreeRtosSetSwitchReason(FreeRtosSwitchReason::DELAYED, nullptr);
 }
 
 void SporFreeRtosTaskDelay(uint32_t ticksToDelay) {
-    Send(FreertosTaskDelayMessage{
-        .handle = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(xTaskGetCurrentTaskHandle())),
-        .ticksToDelay = ticksToDelay
-    });
+    Send(
+        FreertosTaskDelayMessage{
+            .handle = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(xTaskGetCurrentTaskHandle())),
+            .ticksToDelay = ticksToDelay
+        }
+    );
     SporFreeRtosSetSwitchReason(FreeRtosSwitchReason::DELAYED, nullptr);
 }
 
@@ -149,7 +153,7 @@ void SporFreeRtosBlockingOnQueueSend(void *queue, uint8_t queueType) {
 }
 
 void SporFreeRtosBlockingOnQueuePeek(void *queue, uint8_t queueType) {
-    SporFreeRtosBlockingOnQueueReceive(queue, queueType);
+    // SporFreeRtosBlockingOnQueueReceive(queue, queueType);
 }
 
 void SporFreeRtosBlockingOnQueueReceive(void *queue, uint8_t queueType) {
@@ -468,12 +472,14 @@ void SporFreeRtosPendFuncCallFromISR(void *function, void *param1, uint32_t para
 
 void SporFreeRtosMalloc(void *ptr, size_t size) {
     Send(
-        AllocData{.ptr = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(ptr)), .size = static_cast<uint32_t>(size)}
+        AllocMessage{.data = {.ptr = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(ptr)),
+                              .size = static_cast<uint32_t>(size)},
+                     .name = nullptr}
     );
 }
 
 void SporFreeRtosFree(void *ptr) {
-    Send(FreeData{.ptr = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(ptr))});
+    Send(FreeMessage{.data = {.ptr = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(ptr))}, .name = nullptr});
 }
 
 void SporFreeRtosEventGroupCreate(void *eventGroup) {

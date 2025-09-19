@@ -3,8 +3,9 @@
 #include <cstdint>
 #include <string_view>
 
-#include "utils/String.hpp"
 #include "utils/TypeList.hpp"
+#include "spor-common/TargetPointer.hpp"
+#include "utils/StringWire.hpp"
 
 enum class FreeRtosSwitchReason : uint8_t {
     TICK,
@@ -34,7 +35,7 @@ enum class QueueType : uint8_t {
 
 struct FreertosTaskCreatedMessage {
     TargetPointer handle;
-    StringOrSymbol name;
+    TextField name;
     uint32_t priority;
 
     constexpr static auto serialize(auto &archive, auto &self) {
@@ -198,7 +199,7 @@ struct FreertosQueueDeletedMessage {
 
 struct FreertosQueueRegistryMessage {
     TargetPointer handle;
-    StringOrSymbol name;
+    TextField name;
 
     constexpr static auto serialize(auto &archive, auto &self) {
         return archive(self.handle, self.name);

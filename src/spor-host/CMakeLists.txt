@@ -25,5 +25,34 @@ file(GLOB_RECURSE src
 target_sources(${PROJECT_NAME} PRIVATE ${src})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC profiler)
-target_link_libraries(${PROJECT_NAME} PUBLIC orbcat)
+#target_link_libraries(${PROJECT_NAME} PUBLIC orbcat)
 #set_target_properties(${PROJECT_NAME} PROPERTIES UNITY_BUILD ON)
+
+
+include(FindPkgConfig)
+pkg_check_modules(Capstone REQUIRED capstone)
+if (Capstone_FOUND)
+    target_link_libraries(${PROJECT_NAME} PUBLIC ${Capstone_LDFLAGS})
+    target_include_directories(${PROJECT_NAME} PUBLIC ${Capstone_INCLUDE_DIRS})
+else ()
+    message(FATAL_ERROR "Capstone not found")
+endif ()
+
+pkg_check_modules(LIBELF REQUIRED libelf)
+if (LIBELF_FOUND)
+    target_link_libraries(${PROJECT_NAME} PUBLIC ${LIBELF_LDFLAGS})
+    target_include_directories(${PROJECT_NAME} PUBLIC ${LIBELF_INCLUDE_DIRS})
+else ()
+    message(FATAL_ERROR "Libelf not found")
+endif ()
+
+CPMAddPackage(
+        NAME libdwarf
+        GIT_REPOSITORY https://github.com/davea42/libdwarf-code.git
+        GIT_TAG "a5a9232"
+        GIT_SHALLOW TRUE
+        OPTIONS
+        "BUILD_NON_SHARED OFF"
+        "BUILD_SHARED ON"
+)
+target_link_libraries(${PROJECT_NAME} PUBLIC libdwarf::dwarf-shared)
